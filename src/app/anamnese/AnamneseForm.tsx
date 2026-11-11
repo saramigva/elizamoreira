@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+export type SlotGroup = { label: string; slots: { value: string; time: string }[] };
+
 /** Guarda a ficha na base de dados (só a própria pessoa e a Eliza a conseguem ler). */
-export function AnamneseForm({ userId, defaultName }: { userId: string; defaultName: string }) {
+export function AnamneseForm({ userId, defaultName, slots }: { userId: string; defaultName: string; slots: SlotGroup[] }) {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
@@ -37,10 +39,15 @@ export function AnamneseForm({ userId, defaultName }: { userId: string; defaultN
       health_notes: String(f.get("saude")).trim(),
       idea: String(f.get("ideia")).trim(),
       reference_path: referencePath,
+      preferred_slot: String(f.get("horario") || "") || null,
     });
     if (error) {
       if (referencePath) await supabase.storage.from("referencias").remove([referencePath]);
-      setError("A ficha não foi enviada. Tenta de novo.");
+      setError(
+        error.message.includes("já não está livre")
+          ? "Esse horário acabou de ser ocupado. Escolhe outro e envia de novo."
+          : "A ficha não foi enviada. Tenta de novo.",
+      );
       return setState("idle");
     }
     setState("sent");
@@ -51,7 +58,7 @@ export function AnamneseForm({ userId, defaultName }: { userId: string; defaultN
     return (
       <div className="card notice" role="status">
         <h2>Ficha enviada</h2>
-        <p>Obrigada! A Eliza recebeu a tua ficha e entra em contacto contigo.</p>
+        <p>Obrigada! A Eliza recebeu a tua ficha e entra em contacto contigo para confirmar a marcação.</p>
         <Link href="/portal" className="btn btn--ghost">ir para a área de cliente</Link>
       </div>
     );
@@ -110,6 +117,26 @@ export function AnamneseForm({ userId, defaultName }: { userId: string; defaultN
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
           />
         </div>
+      </fieldset>
+
+      <fieldset className="card">
+        <legend className="label">quando te dá jeito</legend>
+        {slots.length === 0 ? (
+          <p className="muted">De momento não há horários livres para escolher. A Eliza contacta-te para combinar a data.</p>
+        ) : (
+          <div className="field">
+            <label htmlFor="horario">horário preferido</label>
+            <select id="horario" name="horario" defaultValue="">
+              <option value="">sem preferência, combinamos depois</option>
+              {slots.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.slots.map((s) => <option key={s.value} value={s.value}>{g.label} · {s.time}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <p className="muted">A marcação só fica fechada quando a Eliza a confirmar.</p>
+          </div>
+        )}
       </fieldset>
 
       <label className="consent" htmlFor="consentimento">

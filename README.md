@@ -33,6 +33,7 @@ npm run dev
 Projeto `elizamoreira` (eu-west-3). Variáveis em `.env.example`; copiar para `.env.local`.
 
 - Cada cliente só lê os próprios dados; a Eliza lê tudo. Fotos e referências ficam em buckets privados.
+- Horários livres: a Eliza define no painel o horário semanal, os dias fechados e a duração das sessões. A cliente escolhe um horário livre na ficha de anamnese (portal → «marcar sessão») e a Eliza confirma-o na ficha, o que cria a marcação na agenda.
 - Registar uma sessão no painel dá um selo ao cliente e abre um ticket de cuidados pós-tattoo.
 - Tornar a conta da Eliza administradora (depois de ela entrar uma vez):
   `update public.profiles set role = 'admin' where id = (select id from auth.users where email = '...');`

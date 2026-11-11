@@ -2,12 +2,28 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer, Navbar } from "@/components/Chrome";
 import { getSessionProfile } from "@/lib/supabase/server";
-import { AnamneseForm } from "./AnamneseForm";
+import { AnamneseForm, type SlotGroup } from "./AnamneseForm";
 
 export const metadata: Metadata = { title: "Ficha de anamnese" };
 
 export default async function AnamnesePage() {
-  const { user, profile } = await getSessionProfile();
+  const { supabase, user, profile } = await getSessionProfile();
+
+  // horários livres dos próximos 30 dias, agrupados por dia (hora de Lisboa)
+  const groups: SlotGroup[] = [];
+  if (user) {
+    const { data } = await supabase.rpc("available_slots", { p_days: 30 });
+    const day = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", weekday: "long", day: "numeric", month: "long" });
+    const time = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit" });
+    for (const iso of (data ?? []) as string[]) {
+      const d = new Date(iso);
+      const label = day.format(d);
+      const last = groups[groups.length - 1];
+      const slot = { value: d.toISOString(), time: time.format(d) };
+      if (last?.label === label) last.slots.push(slot);
+      else groups.push({ label, slots: [slot] });
+    }
+  }
   return (
     <>
       <Navbar />
@@ -19,7 +35,7 @@ export default async function AnamnesePage() {
           Eliza as lê.
         </p>
         {user ? (
-          <AnamneseForm userId={user.id} defaultName={profile?.full_name ?? ""} />
+          <AnamneseForm userId={user.id} defaultName={profile?.full_name ?? ""} slots={groups} />
         ) : (
           <div className="card notice">
             <h2>Entra primeiro na tua conta</h2>

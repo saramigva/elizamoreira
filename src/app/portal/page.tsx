@@ -17,11 +17,17 @@ export default async function PortalPage() {
   const { supabase, user, profile } = await getSessionProfile();
   if (!user || !profile) redirect("/entrar?next=/portal");
 
-  const [sessions, tattoos, tickets] = await Promise.all([
+  const nowIso = new Date().toISOString();
+  const [sessions, tattoos, tickets, upcoming, requests] = await Promise.all([
     supabase.from("sessions").select("session_date, description, price_cents").eq("client_id", user.id).order("session_date", { ascending: false }),
     supabase.from("tattoos").select("zone, pain_level, photo_path").eq("client_id", user.id),
     supabase.from("tickets").select("id, subject, status").eq("client_id", user.id).order("id", { ascending: false }).limit(1),
+    supabase.from("appointments").select("starts_at, zone").eq("client_id", user.id).gte("starts_at", nowIso).order("starts_at").limit(1),
+    supabase.from("anamnese_forms").select("preferred_slot").eq("client_id", user.id).gte("preferred_slot", nowIso).order("created_at", { ascending: false }).limit(1),
   ]);
+  const when = new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  const next = upcoming.data?.[0];
+  const pending = !next ? requests.data?.[0]?.preferred_slot : undefined;
 
   // fotos privadas: links temporários (1 hora)
   const paths = (tattoos.data ?? []).map((t) => t.photo_path).filter(Boolean) as string[];
@@ -48,6 +54,25 @@ export default async function PortalPage() {
     <AppShell avatar={initials}>
       <h1 className="title">Olá{name ? `, ${name}` : ""}</h1>
       {profile.role === "admin" && <Link className="link" href="/painel">ir para o painel →</Link>}
+
+      <section className="card" aria-labelledby="marcacao-title">
+        <p className="label" id="marcacao-title">marcação</p>
+        {next ? (
+          <p className="session">
+            {when.format(new Date(next.starts_at))}
+            {next.zone ? ` · ${next.zone}` : ""}
+          </p>
+        ) : pending ? (
+          <p>
+            Pedido enviado para <strong>{when.format(new Date(pending))}</strong>. A Eliza confirma em breve.
+          </p>
+        ) : (
+          <>
+            <p className="muted">Escolhe um horário livre e conta à Eliza a tua ideia.</p>
+            <Link href="/anamnese" className="btn btn--primary">marcar sessão</Link>
+          </>
+        )}
+      </section>
 
       <section className="card" aria-labelledby="sessao-title">
         <p className="label" id="sessao-title">última sessão</p>

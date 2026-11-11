@@ -26,7 +26,7 @@ function useSubmit() {
 const Status = ({ msg }: { msg: { ok: boolean; text: string } | null }) =>
   msg && <p className={msg.ok ? "muted" : "error"} role={msg.ok ? "status" : "alert"}>{msg.text}</p>;
 
-export function AppointmentForm({ clients }: { clients: Client[] }) {
+export function AppointmentForm({ clients, slotMinutes }: { clients: Client[]; slotMinutes: number }) {
   const { msg, busy, run } = useSubmit();
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,6 +42,7 @@ export function AppointmentForm({ clients }: { clients: Client[] }) {
         client_name: name,
         starts_at: startsAt,
         zone: String(f.get("zona") || "") || null,
+        duration_minutes: Number(f.get("duracao")) || slotMinutes,
       });
     }, "Marcação adicionada.");
   }
@@ -51,6 +52,10 @@ export function AppointmentForm({ clients }: { clients: Client[] }) {
       <div className="field-row">
         <div className="field"><label htmlFor="ap-data">data</label><input id="ap-data" name="data" type="date" required /></div>
         <div className="field"><label htmlFor="ap-hora">hora</label><input id="ap-hora" name="hora" type="time" required /></div>
+        <div className="field">
+          <label htmlFor="ap-duracao">duração (min)</label>
+          <input id="ap-duracao" name="duracao" type="number" min="15" max="720" step="15" defaultValue={slotMinutes} required />
+        </div>
       </div>
       <div className="field">
         <label htmlFor="ap-cliente">cliente com conta (opcional)</label>

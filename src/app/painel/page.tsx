@@ -7,6 +7,7 @@ import type { Appointment } from "@/data/demo";
 import { shortDate, ticketNumber } from "@/lib/format";
 import { getSessionProfile } from "@/lib/supabase/server";
 import { AppointmentForm, SessionForm } from "./AdminForms";
+import { AvailabilityEditor, ConfirmSlotButton } from "./AvailabilityEditor";
 import { Agenda } from "./Agenda";
 import { Feedback } from "./Feedback";
 
@@ -21,14 +22,22 @@ export default async function PainelPage() {
   if (!user) redirect("/entrar?next=/painel");
   if (profile?.role !== "admin") notFound();
 
-  const [profiles, appointments, tickets, feedback, sessions, forms] = await Promise.all([
+  const today = dayKey(new Date());
+  const [profiles, appointments, tickets, feedback, sessions, forms, rules, blocked, settings] = await Promise.all([
     supabase.from("profiles").select("id, full_name, referral_code, referred_by, role").order("created_at"),
-    supabase.from("appointments").select("client_name, starts_at, zone").order("starts_at"),
+    supabase.from("appointments").select("client_id, client_name, starts_at, zone, duration_minutes").order("starts_at"),
     supabase.from("tickets").select("id, client_id, subject, status").order("id", { ascending: false }).limit(50),
     supabase.from("feedback").select("source, author, stars, body").order("created_at", { ascending: false }),
     supabase.from("sessions").select("client_id"),
     supabase.from("anamnese_forms").select("*").order("created_at", { ascending: false }).limit(50),
+    supabase.from("availability").select("id, weekday, start_time, end_time"),
+    supabase.from("blocked_dates").select("day, note").gte("day", today).order("day"),
+    supabase.from("booking_settings").select("slot_minutes").single(),
   ]);
+  const slotMinutes = settings.data?.slot_minutes ?? 120;
+  const booked = new Set((appointments.data ?? []).map((a) => `${a.client_id}|${new Date(a.starts_at).getTime()}`));
+  const slotLabel = (iso: string) =>
+    new Intl.DateTimeFormat("pt-PT", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
   const nameOf = new Map((profiles.data ?? []).map((p) => [p.id, p.full_name || "(sem nome)"]));
   const clients = (profiles.data ?? []).map((p) => ({ id: p.id, name: p.full_name || "(sem nome)" }));
@@ -66,7 +75,8 @@ export default async function PainelPage() {
       </ul>
 
       <Agenda byDate={byDate} />
-      <AppointmentForm clients={clients} />
+      <AppointmentForm clients={clients} slotMinutes={slotMinutes} />
+      <AvailabilityEditor rules={rules.data ?? []} blocked={blocked.data ?? []} slotMinutes={slotMinutes} />
 
       <section className="card" aria-labelledby="tickets-title">
         <div className="card__head"><h2 id="tickets-title">tickets e chats</h2></div>
@@ -111,8 +121,24 @@ export default async function PainelPage() {
         <div>
           {(forms.data ?? []).map((f) => (
             <details key={f.id} className="row">
-              <summary><span>{f.full_name}</span><span className="muted">{shortDate(f.created_at.slice(0, 10))}</span></summary>
+              <summary>
+                <span>{f.full_name}</span>
+                <span className="muted">{f.preferred_slot ? slotLabel(f.preferred_slot) : shortDate(f.created_at.slice(0, 10))}</span>
+              </summary>
               <dl>
+                <div>
+                  <dt>horário pedido</dt>
+                  <dd>{f.preferred_slot ? slotLabel(f.preferred_slot) : "a combinar"}</dd>
+                </div>
+                {f.preferred_slot && (
+                  <div>
+                    {booked.has(`${f.client_id}|${new Date(f.preferred_slot).getTime()}`) ? (
+                      <dd>✓ marcação confirmada na agenda</dd>
+                    ) : (
+                      <ConfirmSlotButton clientId={f.client_id} name={f.full_name} startsAt={f.preferred_slot} minutes={slotMinutes} />
+                    )}
+                  </div>
+                )}
                 <div><dt>nascimento</dt><dd>{f.birth_date}</dd></div>
                 <div><dt>contacto</dt><dd>{f.contact}</dd></div>
                 <div><dt>alergias</dt><dd>{f.allergies}</dd></div>
