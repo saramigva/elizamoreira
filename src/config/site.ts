@@ -10,7 +10,7 @@ export const site = {
     "Olá, sou a Eliza, artista independente. A arte sempre fez parte de quem sou e tatuar sempre foi a minha paixão. Agora é também o meu caminho e quero partilhar convosco cada passo, linha a linha.",
   styles: "Blackwork e fine line",
 
-  instagram: "elizamoreira.tattoo",
+  instagram: "elizamoreira.ink",
   /** Número em formato internacional, só dígitos (ex.: "351912345678"). Vazio = botão «em breve». */
   whatsapp: "",
 
