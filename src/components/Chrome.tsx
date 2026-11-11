@@ -73,7 +73,7 @@ export function Footer() {
 }
 
 /** Moldura estreita (~480px, tipo app) usada no portal e no painel. */
-export function AppShell({ children, avatar, demo = true }: { children: ReactNode; avatar?: string; demo?: boolean }) {
+export function AppShell({ children, avatar, demo = false }: { children: ReactNode; avatar?: string; demo?: boolean }) {
   return (
     <div className="app">
       <header className="app__bar">
@@ -82,6 +82,11 @@ export function AppShell({ children, avatar, demo = true }: { children: ReactNod
       </header>
       {demo && <p className="demo-banner">demonstração · dados fictícios, sem login nem base de dados</p>}
       <main className="app__main">{children}</main>
+      {!demo && (
+        <form action="/auth/sair" method="post" className="app__signout">
+          <button type="submit" className="btn btn--ghost">terminar sessão</button>
+        </form>
+      )}
     </div>
   );
 }

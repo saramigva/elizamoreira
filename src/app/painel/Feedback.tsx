@@ -5,7 +5,7 @@ import { demoFeedback } from "@/data/demo";
 
 type Source = keyof typeof demoFeedback;
 
-export function Feedback() {
+export function Feedback({ data = demoFeedback }: { data?: typeof demoFeedback }) {
   const [source, setSource] = useState<Source>("site");
   return (
     <section className="card" aria-labelledby="fb-title">
@@ -15,18 +15,19 @@ export function Feedback() {
       <div className="segmented" role="group" aria-label="Origem do feedback">
         {(["site", "google"] as Source[]).map((s) => (
           <button key={s} type="button" aria-pressed={source === s} onClick={() => setSource(s)}>
-            {s === "site" ? "site" : "Google"} ({demoFeedback[s].length})
+            {s === "site" ? "site" : "Google"} ({data[s].length})
           </button>
         ))}
       </div>
       <ul className="reviews">
-        {demoFeedback[source].map((r, i) => (
+        {data[source].map((r, i) => (
           <li key={i}>
             <p className="stars" aria-label={`${r.stars} em 5 estrelas`}>{"★".repeat(r.stars)}<span>{"★".repeat(5 - r.stars)}</span></p>
             <p>{r.text}</p>
             <p className="muted">{r.author}</p>
           </li>
         ))}
+        {data[source].length === 0 && <li className="muted">Ainda sem feedback.</li>}
       </ul>
     </section>
   );

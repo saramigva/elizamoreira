@@ -175,6 +175,22 @@ input[type="file"]:focus-visible + *, .file:has(+ input:focus-visible) .btn { bo
 .consent { display: flex; gap: 12px; align-items: flex-start; font-size: 0.92rem; color: var(--text-2); cursor: pointer; }
 .consent input { width: 22px; height: 22px; flex: none; margin: 2px 0 0; accent-color: var(--accent); }
 
+.error { color: #ffb4a8; font-size: 0.92rem; }
+input[type="email"], input[type="time"], input[type="number"], select {
+  width: 100%; background: var(--surface-alt); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 13px; min-height: 46px; font: inherit; color: inherit;
+}
+.app__signout { margin-top: 28px; display: flex; justify-content: center; }
+details.row { border-top: 1px solid var(--border); padding-block: 10px; font-size: 0.94rem; }
+details.row:first-of-type { border-top: 0; padding-top: 0; }
+details.row summary { cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+details.row dl { margin: 10px 0 0; display: grid; gap: 8px; }
+details.row dt { font-size: 0.74rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent-soft); }
+details.row dd { margin: 0; color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.subform { background: var(--surface-alt); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.subform .field-row { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.subform input, .subform select { background: var(--bg); }
+
 /* --- moldura tipo app (portal e painel) ---------------------------------- */
 .app { width: 100%; max-width: 480px; margin-inline: auto; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; flex: 1; }
 .app__bar { display: flex; align-items: center; justify-content: space-between; padding-block: 14px; }

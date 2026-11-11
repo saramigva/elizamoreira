@@ -4,7 +4,13 @@ import { createContext, useContext, useRef, useState, type KeyboardEvent, type R
 
 type Variant = "unissexo" | "feminino" | "masculino";
 type Level = 1 | 2 | 3;
-type Entry = { level: Level; photo?: string };
+export type Entry = { level: Level; photo?: string };
+/** Persistência opcional. Sem `store`, o mapa funciona só em memória (demonstração). */
+export type BodyMapStore = {
+  /** Devolve uma mensagem de erro, ou nada se correu bem. */
+  save: (zone: string, level: Level, file?: File) => Promise<string | void>;
+  remove: (zone: string) => Promise<string | void>;
+};
 
 const LEVELS: { level: Level; label: string; color: string }[] = [
   { level: 1, label: "dor leve", color: "var(--pain-1)" },
@@ -77,13 +83,18 @@ function Zone({ id, cx, cy, children }: { id: string; cx: number; cy: number; ch
   );
 }
 
-export function BodyMap() {
+const DEMO_ENTRIES: Record<string, Entry> = {
+  "antebraco-d": { level: 1 },
+  "ombro-e": { level: 1 },
+  "perna-d": { level: 2 },
+};
+
+export function BodyMap({ initial, store }: { initial?: Record<string, Entry>; store?: BodyMapStore }) {
   const [variant, setVariant] = useState<Variant>("unissexo");
-  const [entries, setEntries] = useState<Record<string, Entry>>({
-    "antebraco-d": { level: 1 },
-    "ombro-e": { level: 1 },
-    "perna-d": { level: 2 },
-  });
+  const [entries, setEntries] = useState<Record<string, Entry>>(initial ?? DEMO_ENTRIES);
+  const [file, setFile] = useState<File | undefined>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [active, setActive] = useState<string | null>(null);
   const [draft, setDraft] = useState<Entry>({ level: 1 });
   const [hint, setHint] = useState(false);
@@ -92,15 +103,27 @@ export function BodyMap() {
   function open(id: string) {
     setActive(id);
     setHint(false);
+    setFile(undefined);
+    setError("");
     setDraft(entries[id] ?? { level: ZONES[id].suggested });
   }
-  function save() {
+  async function persist(action: () => Promise<string | void>) {
+    setBusy(true);
+    setError("");
+    const err = await action();
+    setBusy(false);
+    if (err) setError(err);
+    return !err;
+  }
+  async function save() {
     if (!active) return;
+    if (store && !(await persist(() => store.save(active, draft.level, file)))) return;
     setEntries({ ...entries, [active]: draft });
     setActive(null);
   }
-  function remove() {
+  async function remove() {
     if (!active) return;
+    if (store && !(await persist(() => store.remove(active)))) return;
     const next = { ...entries };
     delete next[active];
     setEntries(next);
@@ -236,12 +259,16 @@ export function BodyMap() {
             className="visually-hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) setDraft({ ...draft, photo: URL.createObjectURL(f) });
+              if (f) {
+                setFile(f);
+                setDraft({ ...draft, photo: URL.createObjectURL(f) });
+              }
             }}
           />
+          {error && <p className="error" role="alert">{error}</p>}
           <div className="editor__actions">
-            <button type="button" className="btn btn--primary" onClick={save}>guardar</button>
-            {entries[active] && <button type="button" className="btn btn--ghost" onClick={remove}>remover</button>}
+            <button type="button" className="btn btn--primary" onClick={save} disabled={busy}>{busy ? "a guardar…" : "guardar"}</button>
+            {entries[active] && <button type="button" className="btn btn--ghost" onClick={remove} disabled={busy}>remover</button>}
             <button type="button" className="btn btn--ghost" onClick={() => setActive(null)}>cancelar</button>
           </div>
         </div>

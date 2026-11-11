@@ -2,30 +2,57 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-export function AnamneseForm() {
-  const [sent, setSent] = useState(false);
+/** Guarda a ficha na base de dados (só a própria pessoa e a Eliza a conseguem ler). */
+export function AnamneseForm({ userId, defaultName }: { userId: string; defaultName: string }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // TODO (backend): enviar para armazenamento seguro com acesso restrito à Eliza.
-    // Até lá, nada sai do browser.
-    setSent(true);
+    const f = new FormData(e.currentTarget);
+    setState("sending");
+    setError("");
+    const supabase = createClient();
+
+    let referencePath: string | null = null;
+    const file = f.get("referencia");
+    if (file instanceof File && file.size > 0) {
+      const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+      referencePath = `${userId}/${Date.now()}.${ext}`;
+      const up = await supabase.storage.from("referencias").upload(referencePath, file, { contentType: file.type });
+      if (up.error) {
+        setError("Não foi possível carregar a imagem. Usa JPG, PNG ou WebP até 5 MB.");
+        return setState("idle");
+      }
+    }
+
+    const { error } = await supabase.from("anamnese_forms").insert({
+      full_name: String(f.get("nome")).trim(),
+      birth_date: String(f.get("nascimento")),
+      contact: String(f.get("contacto")).trim(),
+      allergies: String(f.get("alergias")).trim(),
+      health_notes: String(f.get("saude")).trim(),
+      idea: String(f.get("ideia")).trim(),
+      reference_path: referencePath,
+    });
+    if (error) {
+      if (referencePath) await supabase.storage.from("referencias").remove([referencePath]);
+      setError("A ficha não foi enviada. Tenta de novo.");
+      return setState("idle");
+    }
+    setState("sent");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  if (sent) {
+  if (state === "sent") {
     return (
       <div className="card notice" role="status">
-        <h2>Pré-visualização concluída</h2>
-        <p>
-          A ficha ainda não está ligada a um sistema de armazenamento seguro, por isso <strong>nada foi enviado nem
-          guardado</strong>. Quando as marcações abrirem, este passo entrega a ficha diretamente à Eliza.
-        </p>
-        <button type="button" className="btn btn--ghost" onClick={() => setSent(false)}>
-          voltar à ficha
-        </button>
+        <h2>Ficha enviada</h2>
+        <p>Obrigada! A Eliza recebeu a tua ficha e entra em contacto contigo.</p>
+        <Link href="/portal" className="btn btn--ghost">ir para a área de cliente</Link>
       </div>
     );
   }
@@ -36,7 +63,7 @@ export function AnamneseForm() {
         <legend className="label">os teus dados</legend>
         <div className="field">
           <label htmlFor="nome">nome completo</label>
-          <input id="nome" name="nome" type="text" autoComplete="name" required />
+          <input id="nome" name="nome" type="text" autoComplete="name" defaultValue={defaultName} required />
         </div>
         <div className="field-row">
           <div className="field">
@@ -78,7 +105,7 @@ export function AnamneseForm() {
             id="referencia"
             name="referencia"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="visually-hidden"
             onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
           />
@@ -94,8 +121,9 @@ export function AnamneseForm() {
         </span>
       </label>
 
-      <button type="submit" className="btn btn--primary btn--block">
-        enviar ficha
+      {error && <p className="error" role="alert">{error}</p>}
+      <button type="submit" className="btn btn--primary btn--block" disabled={state === "sending"}>
+        {state === "sending" ? "a enviar…" : "enviar ficha"}
       </button>
     </form>
   );
