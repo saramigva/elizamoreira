@@ -14,8 +14,8 @@ export const site = {
   /** Número em formato internacional, só dígitos (ex.: "351912345678"). Vazio = botão «em breve». */
   whatsapp: "",
 
-  /** A CONFIRMAR: false mostra o botão «marcações» como «em breve». */
-  bookingsOpen: false,
+  /** false mostra o botão «marcações» como «em breve». */
+  bookingsOpen: true,
   /** A CONFIRMAR: localização do estúdio. */
   studioLocation: "Lisboa",
   /** A CONFIRMAR: número de selos e brinde. */
